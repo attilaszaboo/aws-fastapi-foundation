@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd /home/aszabo/src/aws-fastapi-foundation && uv run ruff check \\.$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
