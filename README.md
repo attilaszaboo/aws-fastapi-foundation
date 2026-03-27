@@ -12,6 +12,22 @@ uv add --dev pytest ruff
 
 ## Local dev instructions
 
+- Linting:
+```
+uv run ruff check .
+```
+
+- Formatting
+```
+uv run ruff format .
+```
+
+- Running tests
+```
+uv run pytest
+```
+
+- Starting the FastAPI server in dev mode:
 ```
 uv run fastapi dev
 ```

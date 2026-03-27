@@ -15,6 +15,7 @@ def read_root():
 def health_check():
     return {"status": "ok"}
 
+
 @app.get("/version")
 def get_version():
     return {"version": __version__}
