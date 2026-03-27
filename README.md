@@ -1,48 +1,89 @@
-# Simple FastAPI app deployed to AWS
+# AWS FastAPI Foundation
 
-This is a "hello-world" FastAPI app deployed to AWS with the goal of learning the tech stack.
+Minimal FastAPI application for learning Python backend development, containerization, and AWS deployment.
 
-## Project scaffolding
+## Prerequisites
 
+- Python 3.12+
+- `uv`
+- Docker
+
+## Install dependencies
+
+```bash
+uv sync
 ```
-uv init
-uv add fastapi[standard]
-uv add --dev pytest ruff
+
+## Local development
+
+Run the development server:
+
+```bash
+uv run fastapi dev app/main.py
 ```
 
-## Local dev instructions
+The app will be available at:
 
-- Linting:
-```
+- `http://127.0.0.1:8000/hello`
+- `http://127.0.0.1:8000/health`
+- `http://127.0.0.1:8000/version`
+- `http://127.0.0.1:8000/docs`
+
+## Quality checks
+
+Run lint checks:
+
+```bash
 uv run ruff check .
 ```
 
-- Formatting
-```
+Format code:
+
+```bash
 uv run ruff format .
 ```
 
-- Running tests
-```
+Run tests:
+
+```bash
 uv run pytest
 ```
 
-- Starting the FastAPI server in dev mode:
+## Docker
+
+Build the image from the repo root:
+
+```bash
+docker build -t aws-fastapi-foundation:local .
 ```
-uv run fastapi dev
+
+Run the container and publish port `8000` to the host:
+
+```bash
+docker run --rm -p 8000:8000 aws-fastapi-foundation:local
 ```
 
-This will start the server at http://127.0.0.1:8000
-Docs will be at http://127.0.0.1:8000/docs
+Then open:
 
-## Container build instructions
+- `http://127.0.0.1:8000/hello`
+- `http://127.0.0.1:8000/health`
+- `http://127.0.0.1:8000/version`
+- `http://127.0.0.1:8000/docs`
 
-## AWS Architecture diagram
+Inspect the image with an interactive shell:
 
-## Tech Stack
-- uv package manager
-- [FastAPI](https://fastapi.tiangolo.com/)
+```bash
+docker run --rm -it aws-fastapi-foundation:local bash
+```
 
+## Tech stack
+
+- FastAPI
+- Uvicorn
+- uv
+- Ruff
+- Pytest
+- Docker
 
 ## Lessons learned
 
@@ -61,3 +102,4 @@ I used uv_build, and I had to tell it where the import module is because it's no
 
 I caught Claude to make things up repeatedly even though the CLAUDE.md file included instructions to search the docs when asked about tools, APIs, etc.
 GPT did not hallucinate.
+

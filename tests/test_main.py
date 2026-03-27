@@ -6,8 +6,8 @@ from app.main import __version__, app
 client = TestClient(app)
 
 
-def test_root() -> None:
-    response = client.get("/")
+def test_hello() -> None:
+    response = client.get("/hello")
 
     assert response.status_code == 200
     assert response.json() == {"message": "Hello, World!"}
