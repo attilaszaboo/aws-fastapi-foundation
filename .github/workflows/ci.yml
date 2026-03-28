@@ -1,0 +1,70 @@
+# Display name shown in the GitHub Actions tab.
+name: CI
+
+# Define when GitHub should run this workflow.
+on:
+  # Run CI for pull requests so changes are validated before merge.
+  pull_request:
+
+  # Run CI again when code is pushed to the main branch, including after merges.
+  push:
+    # Limit push-triggered runs to the main branch.
+    branches:
+      - main
+
+  # Allow manual runs from the GitHub Actions UI.
+  workflow_dispatch:
+
+# Define the jobs that make up this workflow.
+jobs:
+  # Internal job id; can be any valid identifier.
+  test-and-build:
+    # Human-readable job name shown in the Actions UI.
+    name: Lint, Test, Build
+
+    # Use GitHub-hosted Ubuntu runners.
+    runs-on: ubuntu-latest
+
+    # Keep permissions minimal since this job only needs to read the repo.
+    permissions:
+      contents: read
+
+    # Define the ordered steps for this job.
+    steps:
+      # Check out the repository so the runner has your code.
+      - name: Check out repository
+        # Official GitHub checkout action.
+        uses: actions/checkout@v5
+
+      # Install the Python version used by this project.
+      - name: Set up Python
+        # Official GitHub Python setup action.
+        uses: actions/setup-python@v6
+        with:
+          # Match the project's Python baseline.
+          python-version: "3.12"
+
+      # Install uv for dependency management and command execution.
+      - name: Set up uv
+        # Official Astral GitHub Action for uv.
+        uses: astral-sh/setup-uv@v7
+
+      # Install project dependencies exactly as defined by the lockfile.
+      - name: Sync dependencies
+        # --frozen fails if the lockfile would need to change.
+        run: uv sync --frozen
+
+      # Run Ruff lint checks.
+      - name: Run Ruff
+        # Fail the workflow if lint issues are found.
+        run: uv run ruff check .
+
+      # Run the unit test suite.
+      - name: Run pytest
+        # Fail the workflow if any tests fail.
+        run: uv run pytest
+
+      # Build the Docker image to verify the container path still works.
+      - name: Build Docker image
+        # Tag is temporary and used only inside CI.
+        run: docker build -t aws-fastapi-foundation:ci .

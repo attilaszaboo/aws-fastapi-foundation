@@ -1,0 +1,30 @@
+
+[project]
+name = "aws-fastapi-foundation"
+version = "0.1.1"
+authors = [
+  { name="Attila Szabo", email="attilaszaboo@gmail.com" },
+]
+description = "FastAPI project to learn tech stack and AWS deployment"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.135.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "ruff>=0.15.8",
+]
+
+# Since this project uses importlib.metadata, which reads the 
+# "aws_fastapi_foundation-0.1.0.dist-info/" folder that gets created 
+# when the package is installed, we need a build back-end.
+[build-system]
+requires = ["uv_build>=0.11.1,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "app"
