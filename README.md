@@ -103,3 +103,62 @@ I used uv_build, and I had to tell it where the import module is because it's no
 I caught Claude to make things up repeatedly even though the CLAUDE.md file included instructions to search the docs when asked about tools, APIs, etc.
 GPT did not hallucinate.
 
+### GitHub Actions to publish a container image to AWS ECR
+
+#### GitHub OIDC provider in AWS
+This is the authentication bridge between GitHub Actions and AWS.
+GitHub Actions does not automatically have AWS access.
+The OIDC provider tells AWS:
+- "I recognize GitHub-issued identity tokens"
+- "GitHub workflows may authenticate using those tokens"
+
+#### IAM role
+This is the AWS identity the workflow assumes.
+The release workflow does not act as your AWS user.
+It assumes a dedicated IAM role, such as `github-actions-ecr-release`.
+That role is what the workflow becomes inside AWS for the duration of the job.
+
+#### Trust policy on the IAM role
+This controls who is allowed to assume the role.
+For this setup, the trust policy should allow:
+- GitHub's OIDC provider
+- only this repository
+- ideally only the `main` branch
+
+So the trust policy answers:
+- who may assume this role?
+
+Mental model:
+- trust policy = admission rules
+
+#### Permissions policy on the IAM role
+This controls what the role can do after it is assumed.
+For this setup, it should allow:
+- `ecr:GetAuthorizationToken`
+- uploading image layers
+- publishing images
+- only to the target ECR repository
+
+So the permissions policy answers:
+- what may this role do?
+
+Mental model:
+- permissions policy = allowed actions after entry
+
+#### GitHub repository secrets and variables
+These connect the workflow to your AWS setup without hardcoding values.
+They are configuration inputs for the workflow.
+- secret: `AWS_ROLE_TO_ASSUME`
+- variable: `AWS_REGION`
+- variable: `ECR_REPOSITORY`
+
+#### Flow
+- You manually run the GitHub release workflow.
+- GitHub Actions starts a runner.
+- The workflow builds the Docker image from the repository.
+- The job obtains a GitHub OIDC token.
+- AWS checks whether the IAM role trust policy allows that GitHub identity.
+- If allowed, AWS lets the job assume the IAM role through STS.
+- The assumed role receives the permissions defined by its permissions policy.
+- The workflow logs in to ECR.
+- The workflow pushes the tagged Docker image to the target ECR repository.

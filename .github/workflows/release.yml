@@ -1,0 +1,116 @@
+# Display name shown in the GitHub Actions tab.
+name: Release
+
+# Define when GitHub should run this workflow.
+on:
+  # Only run this workflow when started manually from the GitHub Actions UI or API.
+  workflow_dispatch:
+    # Define the inputs shown in the "Run workflow" form.
+    inputs:
+      # Let the user choose the image tag to publish to ECR.
+      image_tag:
+        # Human-readable description shown in the GitHub UI.
+        description: Docker image tag to publish to ECR
+        # Require the user to provide a value before starting the workflow.
+        required: true
+        # Tell GitHub this input is a plain string.
+        type: string
+
+      # Optionally publish the same image as the moving "latest" tag.
+      push_latest:
+        # Human-readable description shown in the GitHub UI.
+        description: Also tag and push this image as latest
+        # Make this input optional.
+        required: false
+        # Default to false so releases are explicit.
+        default: false
+        # Render this input as a boolean checkbox in the UI.
+        type: boolean
+
+# Define the jobs in this workflow.
+jobs:
+  # Internal job id used by GitHub Actions.
+  build-and-push:
+    # Human-readable job name shown in the Actions UI.
+    name: Build And Push To ECR
+
+    # Use a GitHub-hosted Ubuntu runner.
+    runs-on: ubuntu-latest
+
+    # Grant only the permissions this job needs.
+    permissions:
+      # Allow the workflow to mint an OIDC token for AWS role assumption.
+      id-token: write
+      # Allow the workflow to read repository contents.
+      contents: read
+
+    # Define environment variables shared by the steps below.
+    env:
+      # Read the AWS region from a GitHub repository variable.
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      # Read the ECR repository name from a GitHub repository variable.
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      # Capture the manually supplied image tag from the workflow input form.
+      IMAGE_TAG: ${{ inputs.image_tag }}
+
+    # Define the ordered steps for this job.
+    steps:
+      # Check out the repository so the runner has the Dockerfile and app code.
+      - name: Check out repository
+        # Official GitHub action for checking out repository contents.
+        uses: actions/checkout@v6
+
+      # Configure short-lived AWS credentials by assuming an IAM role via GitHub OIDC.
+      - name: Configure AWS credentials
+        # Official AWS action for exporting AWS credentials to the runner environment.
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          # IAM role ARN stored as a GitHub repository secret.
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          # AWS region where the target ECR repository exists.
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Authenticate the local Docker client to Amazon ECR.
+      - name: Log in to Amazon ECR
+        # Give this step an id so later steps can reference its outputs.
+        id: login-ecr
+        # Official AWS action for ECR Docker login.
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Build the image and push the requested release tag to ECR.
+      - name: Build and push release image
+        # Compose the fully qualified registry URL and image coordinates.
+        env:
+          # ECR registry URI returned by the login action, for example 123456789012.dkr.ecr.us-east-1.amazonaws.com.
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        # Run the Docker build and push commands.
+        run: |
+          # Fail fast if any command errors.
+          set -e
+          # Build the fully qualified image URI for the requested release tag.
+          IMAGE_URI="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          # Build the Docker image from the repository root.
+          docker build -t "$IMAGE_URI" .
+          # Push the tagged image to Amazon ECR.
+          docker push "$IMAGE_URI"
+
+      # Optionally publish the same image as the moving latest tag.
+      - name: Tag and push latest image
+        # Only run this step when the manual checkbox was selected.
+        if: ${{ inputs.push_latest }}
+        # Compose the fully qualified registry URL and image coordinates.
+        env:
+          # ECR registry URI returned by the login action.
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        # Create and push the latest tag that points at the same image contents.
+        run: |
+          # Fail fast if any command errors.
+          set -e
+          # Build the source image URI using the requested release tag.
+          SOURCE_IMAGE_URI="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          # Build the destination image URI for the latest tag.
+          LATEST_IMAGE_URI="$REGISTRY/$ECR_REPOSITORY:latest"
+          # Create the latest tag locally from the already built release image.
+          docker tag "$SOURCE_IMAGE_URI" "$LATEST_IMAGE_URI"
+          # Push the latest tag to Amazon ECR.
+          docker push "$LATEST_IMAGE_URI"
