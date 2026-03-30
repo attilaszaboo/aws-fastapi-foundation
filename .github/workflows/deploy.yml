@@ -1,0 +1,110 @@
+# Display name shown in the GitHub Actions tab.
+name: Deploy
+
+# Define when GitHub should run this workflow.
+on:
+  # Only run this workflow when started manually from the GitHub Actions UI or API.
+  workflow_dispatch:
+    # Define the inputs shown in the "Run workflow" form.
+    inputs:
+      # Let the user choose which ECR image tag should run in ECS.
+      image_tag:
+        # Human-readable description shown in the GitHub UI.
+        description: Docker image tag to deploy to ECS
+        # Require the user to provide a value before starting the workflow.
+        required: true
+        # Tell GitHub this input is a plain string.
+        type: string
+
+# Define the jobs in this workflow.
+jobs:
+  # Internal job id used by GitHub Actions.
+  deploy:
+    # Human-readable job name shown in the Actions UI.
+    name: Deploy Image Tag To ECS
+
+    # Use a GitHub-hosted Ubuntu runner.
+    runs-on: ubuntu-latest
+
+    # Grant only the permissions this job needs.
+    permissions:
+      # Allow the workflow to mint an OIDC token for AWS role assumption.
+      id-token: write
+      # Allow the workflow to read repository contents.
+      contents: read
+
+    # Define environment variables shared by the steps below.
+    env:
+      # Read the AWS region from a GitHub repository variable.
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      # Read the ECR repository name from a GitHub repository variable.
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      # CDK deploys this stack name from the infrastructure app.
+      STACK_NAME: InfrastructureStack
+      # Capture the manually supplied image tag from the workflow input form.
+      IMAGE_TAG: ${{ inputs.image_tag }}
+
+    # Define the ordered steps for this job.
+    steps:
+      # Check out the repository so the runner has the CDK app and stack code.
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      # Install the Python version used by the CDK project.
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # Install Node.js because the CDK CLI and jsii runtime depend on it.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Install the CDK CLI used to deploy the infrastructure stack.
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      # Configure short-lived AWS credentials by assuming an IAM role via GitHub OIDC.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          # IAM role ARN stored as a GitHub repository secret.
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          # AWS region where the target stack exists.
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Install the Python dependencies for the CDK app before deployment.
+      - name: Install CDK Python dependencies
+        working-directory: infrastructure
+        run: python -m pip install -r requirements.txt
+
+      # Update the ECS service to run the chosen image tag.
+      - name: Deploy CDK stack
+        working-directory: infrastructure
+        run: |
+          set -e
+          cdk deploy "$STACK_NAME" \
+            --require-approval never \
+            -c ecrRepositoryName="$ECR_REPOSITORY" \
+            -c imageTag="$IMAGE_TAG"
+
+      # Fetch the ALB DNS name from the CloudFormation stack outputs so the
+      # workflow can verify the deployed version is actually reachable.
+      - name: Read stack outputs
+        id: stack-outputs
+        run: |
+          set -e
+          LOAD_BALANCER_DNS_NAME="$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='LoadBalancerDnsName'].OutputValue" \
+            --output text)"
+          echo "load_balancer_dns_name=$LOAD_BALANCER_DNS_NAME" >> "$GITHUB_OUTPUT"
+
+      # Smoke-test the deployed service through the public ALB endpoint.
+      - name: Smoke test deployed service
+        run: |
+          set -e
+          curl --fail --retry 12 --retry-delay 10 \
+            "http://${{ steps.stack-outputs.outputs.load_balancer_dns_name }}/health"
