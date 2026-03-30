@@ -116,6 +116,21 @@ class InfrastructureStack(Stack):
             interval=Duration.seconds(30),
         )
 
+        # Let ECS add or remove tasks based on CPU utilization so the service
+        # can respond to load without changing the infrastructure manually.
+        # The minimum stays at one task so the API remains available, and the
+        # maximum is intentionally small for this learning project.
+        scaling = service.service.auto_scale_task_count(
+            min_capacity=1,
+            max_capacity=3,
+        )
+        scaling.scale_on_cpu_utilization(
+            "CpuScaling",
+            target_utilization_percent=60,
+            scale_in_cooldown=Duration.seconds(60),
+            scale_out_cooldown=Duration.seconds(60),
+        )
+
         # Stack outputs make the deployment result easy to discover after
         # cdk deploy finishes.
         CfnOutput(self, "VpcId", value=vpc.vpc_id)
