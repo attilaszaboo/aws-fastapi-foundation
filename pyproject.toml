@@ -28,3 +28,6 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-root = ""
 module-name = "app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
