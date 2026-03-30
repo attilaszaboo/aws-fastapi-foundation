@@ -18,3 +18,4 @@ wheels/
 
 # Ignore local AI agent settings
 .claude/
+.codex
