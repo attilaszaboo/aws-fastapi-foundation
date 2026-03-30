@@ -3,6 +3,7 @@
 This document describes:
 
 - the current architecture of this repository
+- the current deployed architecture in AWS
 - the intended target architecture on AWS
 - why ECS on Fargate is the preferred deployment path for this project
 - how CI, ECR, IAM, networking, ALB, health checks, and observability fit together
@@ -80,7 +81,47 @@ It does not yet provide:
 
 That is the gap the ECS Fargate + ALB architecture will close.
 
-## 2. Target architecture
+## 2. Current deployed architecture in AWS
+
+The first deployed AWS version is intentionally simpler than the longer-term target architecture.
+
+Current deployed shape:
+
+```text
+Internet client -> ALB -> ECS Service on Fargate -> FastAPI container
+                                   |
+                                   -> CloudWatch Logs
+```
+
+Implemented characteristics:
+
+1. CDK defines the infrastructure.
+2. The container image is pulled from Amazon ECR.
+3. ECS runs the FastAPI container on Fargate.
+4. An internet-facing Application Load Balancer exposes the service publicly.
+5. The ALB health check uses `/health`.
+6. Container logs are written to CloudWatch Logs.
+
+Current networking shape:
+
+1. A VPC spans two Availability Zones.
+2. The ALB runs in public subnets.
+3. The Fargate tasks also currently run in public subnets.
+4. The Fargate tasks are currently assigned public IPs.
+
+This is not the final intended networking design.
+
+It was chosen intentionally for the first iteration because:
+
+- it keeps the deployment path easier to understand
+- it avoids NAT gateway cost during early learning
+- it reduces the number of moving parts while validating the containerized service end to end
+
+So the current deployed architecture should be understood as:
+
+- a simplified first milestone that proves the runtime path works
+
+## 3. Target architecture
 
 The intended target is:
 
@@ -100,7 +141,17 @@ More specifically:
 6. The ALB forwards traffic to healthy ECS tasks.
 7. Container logs go to CloudWatch Logs.
 
-## 3. Why ECS on Fargate for this project
+The intended networking shape is more production-like:
+
+1. A VPC spans at least two Availability Zones.
+2. The ALB is internet-facing and runs in public subnets.
+3. ECS tasks run in private subnets.
+4. Security groups restrict task access so only the ALB can reach the application port.
+5. NAT gateways or VPC endpoints are introduced only when needed.
+
+This target shape is not necessary to prove the first deployment, but it is the more realistic direction for later refinement.
+
+## 4. Why ECS on Fargate for this project
 
 For this project, ECS on Fargate is the best fit because it matches my learning goals better than EC2, Lambda, or App Runner.
 
@@ -175,7 +226,7 @@ Reasons:
 
 App Runner is a good platform for fast results. ECS on Fargate is the better platform for deliberate learning in this project.
 
-## 4. How the target architecture fits together
+## 5. How the architecture fits together
 
 This section explains the important moving parts and how requests and deployments flow through the system.
 
@@ -235,7 +286,7 @@ The architectural lesson is that IAM roles should reflect separate responsibilit
 
 Networking provides controlled reachability.
 
-The expected network design is:
+The longer-term intended network design is:
 
 1. A VPC spans at least two Availability Zones.
 2. The ALB is internet-facing.
@@ -254,6 +305,15 @@ That means:
 - the tasks are not directly exposed to the internet
 
 This is an important production pattern because it centralizes public ingress and reduces unnecessary exposure.
+
+The current deployed first iteration is simpler:
+
+1. the ALB is public
+2. the ECS tasks are also in public subnets
+3. the ECS tasks currently have public IPs
+4. the service still relies on the ALB for normal ingress
+
+This is acceptable for the first milestone, but it is not the ideal final network posture.
 
 ### ALB
 
@@ -420,13 +480,39 @@ That is honest and strong.
 
 The architecture should evolve in this order:
 
-1. ECS Fargate + ALB over HTTP
+1. ECS Fargate + ALB over HTTP in the current simplified network layout
 2. CloudWatch log verification and smoke testing
-3. HTTPS with ACM and Route 53
-4. small autoscaling policy
-5. deployment automation from GitHub Actions
+3. move ECS tasks to private subnets and add the required egress path
+4. HTTPS with ACM and Route 53
+5. small autoscaling policy
+6. deployment automation from GitHub Actions
 
 This order keeps learning incremental and keeps the system understandable.
+
+## 11. How CDK should authenticate to AWS
+
+For local CDK use, prefer the same authentication methods that the AWS CLI uses:
+
+- `aws configure`
+- named AWS CLI profiles
+- AWS SSO
+
+CDK can also use standard AWS environment variables such as:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_SESSION_TOKEN`
+- `AWS_REGION`
+
+But do not store AWS credentials in a project `.env` file.
+
+For this project, the preferred approach is:
+
+1. authenticate with the AWS CLI
+2. verify with `aws sts get-caller-identity`
+3. run `cdk synth`, `cdk diff`, or `cdk deploy`
+
+That is cleaner, safer, and closer to real-world usage than keeping long-lived AWS keys in the repository.
 
 ## Official references
 
