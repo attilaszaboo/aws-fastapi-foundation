@@ -1,12 +1,41 @@
 # AWS FastAPI Foundation
 
-Minimal FastAPI application for learning Python backend development, containerization, and AWS deployment.
+Minimal FastAPI application for learning Python backend development, containerization, CI/CD, and AWS deployment with ECS Fargate, ALB, ECR, and CDK.
 
-## Prerequisites
+## Local Prerequisites
 
 - Python 3.12+
 - `uv`
 - Docker
+
+## AWS Deployment Prerequisites
+
+- AWS account
+- AWS CLI configured and authenticated
+- Node.js and `npm`
+- AWS CDK CLI
+- Amazon ECR repo for this project
+
+Install the CDK CLI:
+
+```bash
+npm install -g aws-cdk
+```
+
+Verify AWS access:
+
+```bash
+aws sts get-caller-identity
+```
+
+## Documentation
+
+Use this README as the entry point, then go deeper with these documents:
+
+- [Architecture](/home/aszabo/src/aws-fastapi-foundation/docs/architecture.md): current repository and AWS architecture, deployment flow, and service tradeoffs
+- [CDK Basics](/home/aszabo/src/aws-fastapi-foundation/docs/cdk-basics.md): tutorial-style explanation of app vs stack, `cdk synth`, `cdk diff`, and `cdk deploy`
+- [CDK Constructs](/home/aszabo/src/aws-fastapi-foundation/docs/cdk-constructs.md): how to find and use the main CDK constructs used by this project
+- [ECS Fargate CDK Plan](/home/aszabo/src/aws-fastapi-foundation/docs/ecs-fargate-cdk-plan.md): phased deployment plan and implementation notes from building the project
 
 ## Install dependencies
 
@@ -76,6 +105,85 @@ Inspect the image with an interactive shell:
 docker run --rm -it aws-fastapi-foundation:local bash
 ```
 
+## AWS Deployment
+
+The application is deployed to AWS as a containerized ECS service on Fargate behind an Application Load Balancer.
+The infrastructure is defined with AWS CDK under `infrastructure/`.
+
+Normal GitHub-based deployment flow:
+
+1. Build and publish a tagged image to Amazon ECR.
+2. Run the deploy workflow with the image tag to run.
+3. Let ECS roll the service forward behind the ALB.
+
+Use the `Deploy` GitHub Actions workflow when:
+
+- you want the normal project deployment path
+- you want to promote a chosen image tag into ECS
+- you want the workflow to smoke-test the public `/health` endpoint after deployment
+
+Use local/manual CDK commands when:
+
+- you are developing or debugging the infrastructure itself
+- you want to inspect `cdk diff` locally before changing AWS
+- you are experimenting with CDK changes before relying on GitHub Actions
+
+Local/manual CDK deployment:
+
+```bash
+cd infrastructure
+cdk diff -c imageTag=0.1.1 -c ecrRepositoryName=aws-fastapi-foundation
+cdk deploy -c imageTag=0.1.1 -c ecrRepositoryName=aws-fastapi-foundation
+```
+
+The stack currently provisions:
+
+- VPC
+- ECS cluster
+- CloudWatch log group
+- ECS Fargate service
+- Application Load Balancer
+- ALB health checks using `/health`
+- ECS autoscaling based on CPU utilization
+
+## Release New Version To ECS
+
+This project keeps artifact publishing and runtime deployment as separate steps.
+That means:
+
+- the release workflow publishes a tagged image to Amazon ECR
+- the deploy workflow chooses which image tag ECS should run
+
+This project's ECS service does not automatically run the newest image in ECR.
+The CDK stack decides which image tag the ECS task definition should use.
+
+To release a new app version, for example `0.2.0`:
+
+1. Update the application code and version.
+2. Run the `Release` GitHub Actions workflow with image tag `0.2.0`.
+3. Run the `Deploy` GitHub Actions workflow with image tag `0.2.0`.
+
+What this does:
+
+- publishes the new image tag to ECR first
+- updates the ECS task definition to point at that ECR image tag
+- lets ECS roll the service forward to new task(s)
+- keeps the ALB routing traffic only to healthy tasks
+
+After deployment, verify the running version:
+
+```bash
+curl http://YOUR_ALB_DNS_NAME/version
+```
+
+## GitHub Actions
+
+The repository contains two GitHub Actions workflows:
+
+- CI: runs Ruff, pytest, and Docker build validation on pull requests and on `main`
+- Release: manually builds and pushes a tagged Docker image to Amazon ECR using GitHub OIDC and an AWS IAM role
+- Deploy: manually runs `cdk deploy` with a chosen image tag and smoke-tests the public `/health` endpoint
+
 ## Tech stack
 
 - FastAPI
@@ -84,6 +192,11 @@ docker run --rm -it aws-fastapi-foundation:local bash
 - Ruff
 - Pytest
 - Docker
+- GitHub Actions
+- Amazon ECR
+- Amazon ECS on Fargate
+- Application Load Balancer
+- AWS CDK
 
 ## Lessons learned
 
@@ -162,3 +275,8 @@ They are configuration inputs for the workflow.
 - The assumed role receives the permissions defined by its permissions policy.
 - The workflow logs in to ECR.
 - The workflow pushes the tagged Docker image to the target ECR repository.
+
+### AWS CDK - IaC
+
+CDK is a powerful tool for defining AWS infrastructure using familiar programming languages such as Python. But it's no small feat to learning it in detail.
+Luckily once you understand the high level concepts in CDK and you have a good grasp of what your AWS infrastructure should look like for your application or service, you can use the AWS CDK Developer Reference guide to look up the classes and functions that map to the AWS infrastructure building blocks you have identified.

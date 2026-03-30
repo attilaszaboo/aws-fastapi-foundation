@@ -18,14 +18,17 @@ Already implemented:
 - Dockerfile that runs the app on port `8000`
 - GitHub Actions CI workflow that lints, tests, and builds the image
 - GitHub Actions release workflow that manually pushes the image to Amazon ECR
+- GitHub Actions deploy workflow that manually promotes a chosen image tag to ECS through CDK
+- AWS infrastructure definition with CDK
+- ECS service on Fargate behind an ALB
+- CloudWatch log group configuration in infrastructure
+- Deployment update flow from ECR image tag to running ECS service
 
 Not yet implemented:
 
-- AWS infrastructure definition
-- ECS service
-- ALB
-- CloudWatch log group configuration in infrastructure
-- Deployment update flow from ECR image to running ECS service
+- HTTPS with ACM and DNS
+- Private-subnet task placement
+- richer application behavior
 
 ## Target architecture
 
