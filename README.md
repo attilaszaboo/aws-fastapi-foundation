@@ -32,10 +32,10 @@ aws sts get-caller-identity
 
 Use this README as the entry point, then go deeper with these documents:
 
-- [Architecture](/home/aszabo/src/aws-fastapi-foundation/docs/architecture.md): current repository and AWS architecture, deployment flow, and service tradeoffs
-- [CDK Basics](/home/aszabo/src/aws-fastapi-foundation/docs/cdk-basics.md): tutorial-style explanation of app vs stack, `cdk synth`, `cdk diff`, and `cdk deploy`
-- [CDK Constructs](/home/aszabo/src/aws-fastapi-foundation/docs/cdk-constructs.md): how to find and use the main CDK constructs used by this project
-- [ECS Fargate CDK Plan](/home/aszabo/src/aws-fastapi-foundation/docs/ecs-fargate-cdk-plan.md): phased deployment plan and implementation notes from building the project
+- [Architecture](./docs/architecture.md): current repository and AWS architecture, deployment flow, and service tradeoffs
+- [CDK Basics](./docs/cdk-basics.md): tutorial-style explanation of app vs stack, `cdk synth`, `cdk diff`, and `cdk deploy`
+- [CDK Constructs](./docs/cdk-constructs.md): how to find and use the main CDK constructs used by this project
+- [Implementation Plan](./docs/implementation-plan.md): phased deployment plan and implementation notes from building the project
 
 ## Install dependencies
 
@@ -53,6 +53,7 @@ uv run fastapi dev app/main.py
 
 The app will be available at:
 
+- `http://127.0.0.1:8000/`
 - `http://127.0.0.1:8000/hello`
 - `http://127.0.0.1:8000/health`
 - `http://127.0.0.1:8000/version`
@@ -94,6 +95,7 @@ docker run --rm -p 8000:8000 aws-fastapi-foundation:local
 
 Then open:
 
+- `http://127.0.0.1:8000/`
 - `http://127.0.0.1:8000/hello`
 - `http://127.0.0.1:8000/health`
 - `http://127.0.0.1:8000/version`
