@@ -277,6 +277,29 @@ They are configuration inputs for the workflow.
 - The workflow logs in to ECR.
 - The workflow pushes the tagged Docker image to the target ECR repository.
 
+### GitHub Actions to deploy CDK stacks need different IAM access than pushing to ECR
+
+I initially reused the same GitHub Actions AWS role for both:
+
+- publishing Docker images to ECR
+- deploying infrastructure updates with CDK
+
+That was not sufficient.
+
+The ECR release role could publish container images, but the deploy workflow also needed access to the AWS CDK bootstrap resources and roles that CDK uses during deployment.
+
+High-level lesson:
+
+- artifact publishing and infrastructure deployment are different responsibilities
+- they often need different IAM roles and different permissions
+
+What an AWS practitioner should learn from this:
+
+1. A successful ECR push does not prove that the same role can perform CDK deployment.
+2. CDK deployments depend on bootstrap resources such as the CDK assets bucket and CDK bootstrap roles.
+3. The GitHub deploy role must be allowed to assume the relevant CDK bootstrap roles.
+4. Separating release and deploy workflows is not only cleaner operationally, it also makes IAM boundaries easier to reason about.
+
 ### AWS CDK - IaC
 
 CDK is a powerful tool for defining AWS infrastructure using familiar programming languages such as Python. But it's no small feat to learning it in detail.
