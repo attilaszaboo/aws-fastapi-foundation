@@ -34,7 +34,7 @@ jobs:
       # Check out the repository so the runner has your code.
       - name: Check out repository
         # Official GitHub checkout action.
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       # Install the Python version used by this project.
       - name: Set up Python
