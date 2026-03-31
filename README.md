@@ -261,7 +261,8 @@ Mental model:
 #### GitHub repository secrets and variables
 These connect the workflow to your AWS setup without hardcoding values.
 They are configuration inputs for the workflow.
-- secret: `AWS_ROLE_TO_ASSUME`
+- secret: `AWS_ROLE_TO_ASSUME` for the ECR release workflow
+- secret: `AWS_DEPLOY_ROLE_TO_ASSUME` for the CDK deploy workflow
 - variable: `AWS_REGION`
 - variable: `ECR_REPOSITORY`
 
