@@ -134,9 +134,22 @@ Local/manual CDK deployment:
 
 ```bash
 cd infrastructure
-cdk diff -c imageTag=0.1.1 -c ecrRepositoryName=aws-fastapi-foundation
-cdk deploy -c imageTag=0.1.1 -c ecrRepositoryName=aws-fastapi-foundation
+cdk diff -c imageTag=<image_tag> -c ecrRepositoryName=aws-fastapi-foundation
+cdk deploy -c imageTag=<image_tag> -c ecrRepositoryName=aws-fastapi-foundation
 ```
+
+Destroy the AWS infrastructure when you no longer need it:
+
+```bash
+cd infrastructure
+cdk destroy InfrastructureStack
+```
+
+Notes:
+
+- Run the command from `infrastructure/` so CDK can find `cdk.json`.
+- Verify the CloudFormation stack reaches `DELETE_COMPLETE`.
+- Check that no ECR repository, load balancer, or NAT gateway was left behind if you want charges to stop completely.
 
 The stack currently provisions:
 

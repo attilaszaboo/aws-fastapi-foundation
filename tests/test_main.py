@@ -27,6 +27,13 @@ def test_hello_with_name() -> None:
     assert response.json() == {"message": "Hello Attila! Nice to talk to you."}
 
 
+def test_hello_with_empty_name() -> None:
+    response = client.get("/hello", params={"name": ""})
+
+    assert response.status_code == 200
+    assert response.json() == {"message": "Hello, World!"}
+
+
 def test_health() -> None:
     response = client.get("/health")
 

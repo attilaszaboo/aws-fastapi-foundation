@@ -15,13 +15,19 @@ pip install -r requirements.txt
 Preview changes:
 
 ```bash
-cdk diff -c imageTag=0.1.1 -c ecrRepositoryName=aws-fastapi-foundation
+cdk diff -c imageTag=<image_tag> -c ecrRepositoryName=aws-fastapi-foundation
 ```
 
 Deploy:
 
 ```bash
-cdk deploy -c imageTag=0.1.1 -c ecrRepositoryName=aws-fastapi-foundation
+cdk deploy -c imageTag=<image_tag> -c ecrRepositoryName=aws-fastapi-foundation
+```
+
+Destroy the stack:
+
+```bash
+cdk destroy InfrastructureStack
 ```
 
 Run tests:
