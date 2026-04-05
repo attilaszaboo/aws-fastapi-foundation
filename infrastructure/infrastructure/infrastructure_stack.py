@@ -18,12 +18,12 @@ class InfrastructureStack(Stack):
 
         # Keep the configuration surface small for the first deployment.
         # The repository name and image tag can be overridden at deploy time:
-        #   cdk deploy -c ecrRepositoryName=aws-fastapi-foundation -c imageTag=0.1.1
+        #   cdk deploy -c ecrRepositoryName=aws-fastapi-foundation -c imageTag=<image_tag>
         ecr_repository_name = (
             self.node.try_get_context("ecrRepositoryName")
             or "aws-fastapi-foundation"
         )
-        image_tag = self.node.try_get_context("imageTag") or "0.1.1"
+        image_tag = self.node.try_get_context("imageTag") or "latest"
 
         # The VPC is the network boundary for the whole service.
         #
