@@ -2,7 +2,8 @@ from importlib import metadata
 
 from fastapi import FastAPI
 
-__version__ = metadata.version("aws-fastapi-foundation")
+_pkg = metadata.metadata("aws-fastapi-foundation")
+__version__ = _pkg["Version"]
 ROOT_MESSAGE = (
     "This backend is a minimal FastAPI service for learning Python, "
     "containers, CI/CD, and AWS deployment."
@@ -10,7 +11,7 @@ ROOT_MESSAGE = (
 
 app = FastAPI(
     title="AWS FastAPI Foundation",
-    summary=metadata.metadata("aws-fastapi-foundation")["Summary"],
+    summary=_pkg["Summary"],
     version=__version__,
 )
 
